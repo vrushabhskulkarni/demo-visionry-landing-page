@@ -1,0 +1,67 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Visionary | Gesture Navigation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <!-- MediaPipe Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <style>
+      body {
+        margin: 0;
+        background-color: #050505;
+        color: #ffffff;
+        font-family: 'Inter', sans-serif;
+        scrollbar-width: none; /* Hide scrollbar for cleaner look */
+      }
+      body::-webkit-scrollbar {
+        display: none;
+      }
+      .glass {
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .text-glow {
+        text-shadow: 0 0 10px rgba(0, 242, 255, 0.5);
+      }
+      #gesture-canvas {
+        transform: scaleX(-1);
+      }
+      .active-glow-down {
+        box-shadow: 0 0 40px rgba(0, 242, 255, 0.3);
+        border-color: rgba(0, 242, 255, 0.6);
+      }
+      .active-glow-up {
+        box-shadow: 0 0 40px rgba(255, 0, 234, 0.3);
+        border-color: rgba(255, 0, 234, 0.6);
+      }
+      .active-glow-halt {
+        box-shadow: 0 0 40px rgba(255, 48, 48, 0.3);
+        border-color: rgba(255, 48, 48, 0.6);
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.31.0",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
