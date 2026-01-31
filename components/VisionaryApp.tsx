@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { 
   Camera as CameraIcon, 
@@ -35,7 +34,10 @@ type GestureState = 'IDLE' | 'DOWN' | 'UP' | 'HALT' | 'SWIPE';
 const PINCH_THRESHOLD = 0.04; 
 const SMOOTHING_FACTOR = 0.12; 
 const GESTURE_CONFIDENCE = 0.88; 
-const SWIPE_DISTANCE_THRESHOLD = 0.12; // Required movement for swipe
+const SWIPE_DISTANCE_THRESHOLD = 0.12;
+
+// Replace with your actual Formspree form ID
+const FORMSPREE_FORM_ID = 'https://formflowapi.thefortune.club/api/submit/10218471-9f90-4ff6-b579-711279903e51';
 
 const VisionaryApp: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -57,6 +59,15 @@ const VisionaryApp: React.FC = () => {
   const [isScrollLocked, setIsScrollLocked] = useState(false);
   const [isInCarouselZone, setIsInCarouselZone] = useState(false);
   
+  // Form state
+  const [formData, setFormData] = useState({
+    name: '',
+    phone: '',
+    email: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  
   const scrollVelocity = useRef(0);
   const lastGesture = useRef<GestureState>('IDLE');
   const lastPinchState = useRef<boolean>(false);
@@ -65,7 +76,6 @@ const VisionaryApp: React.FC = () => {
   const cameraRef = useRef<any>(null);
   const lastFistToggleTime = useRef<number>(0);
   
-  // Ref for swipe tracking
   const swipeStartX = useRef<number | null>(null);
   const lastSwipeTime = useRef<number>(0);
 
@@ -77,7 +87,6 @@ const VisionaryApp: React.FC = () => {
   useEffect(() => { isInCarouselZoneRef.current = isInCarouselZone; }, [isInCarouselZone]);
   useEffect(() => { isVisionEnabledRef.current = isVisionEnabled; }, [isVisionEnabled]);
 
-  // Lock body scroll when modals are open
   useEffect(() => {
     if (showAuthModal || showWaitlist) {
       document.body.style.overflow = 'hidden';
@@ -122,6 +131,44 @@ const VisionaryApp: React.FC = () => {
     rafId = requestAnimationFrame(scrollLoop);
     return () => cancelAnimationFrame(rafId);
   }, []);
+
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({
+      ...prev,
+      [e.target.name]: e.target.value
+    }));
+  };
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setSubmitStatus('idle');
+
+    try {
+      const response = await fetch(`${FORMSPREE_FORM_ID}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (response.ok) {
+        setSubmitStatus('success');
+        setFormData({ name: '', phone: '', email: '' });
+        setTimeout(() => {
+          setShowWaitlist(false);
+          setSubmitStatus('idle');
+        }, 2000);
+      } else {
+        setSubmitStatus('error');
+      }
+    } catch (error) {
+      setSubmitStatus('error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const triggerClick = (x: number, y: number) => {
     const element = document.elementFromPoint(x, y);
@@ -197,7 +244,6 @@ const VisionaryApp: React.FC = () => {
       return landmarks[tipIdx].y < landmarks[pipJoint].y - 0.05;
     });
 
-    // REFINED 3-FINGER SWIPE: Index, Middle, Ring up. Pinky folded.
     const indexUp = landmarks[8].y < landmarks[6].y - 0.05;
     const middleUp = landmarks[12].y < landmarks[10].y - 0.05;
     const ringUp = landmarks[16].y < landmarks[14].y - 0.05;
@@ -236,11 +282,8 @@ const VisionaryApp: React.FC = () => {
         swipeStartX.current = currentHandX;
       } else {
         const deltaX = currentHandX - swipeStartX.current;
-        // Swipe to the left (next): since canvas is mirrored, user moving hand left
-        // usually results in increasing X in unmirrored coords if we consider the frame.
-        // Let's use logic: if hand moves significantly away from start point.
         if (Math.abs(deltaX) > SWIPE_DISTANCE_THRESHOLD && now - lastSwipeTime.current > 800) {
-          if (deltaX < 0) { // Moving towards user's left (mirrored)
+          if (deltaX < 0) {
             nextCarousel();
           } else {
             prevCarousel();
@@ -248,7 +291,7 @@ const VisionaryApp: React.FC = () => {
           setGesture('SWIPE');
           lastGesture.current = 'SWIPE';
           lastSwipeTime.current = now;
-          swipeStartX.current = null; // Reset for next swipe
+          swipeStartX.current = null;
         }
       }
     }
@@ -342,7 +385,6 @@ const VisionaryApp: React.FC = () => {
 
   return (
     <div className="relative w-full overflow-x-hidden">
-      {/* MODALS RENDERED AS FIXED OVERLAYS AT THE VERY TOP OF THE STACK */}
       {showAuthModal && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/95 backdrop-blur-3xl">
           <div className="relative w-full max-w-4xl bg-[#0c0c0c] border border-white/10 rounded-[40px] p-8 md:p-14 shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300 max-h-[90vh] overflow-y-auto scrollbar-hide">
@@ -412,13 +454,91 @@ const VisionaryApp: React.FC = () => {
       {showWaitlist && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/95 backdrop-blur-3xl">
           <div className="relative glass border-white/10 w-full max-w-md p-10 rounded-[40px] shadow-2xl animate-in fade-in zoom-in duration-300">
-            <button onClick={() => setShowWaitlist(false)} className="absolute top-6 right-6 p-2 glass rounded-full hover:bg-white/10 transition-all hover:scale-110 active:scale-90 z-20"><X className="w-5 h-5" /></button>
-            <div className="w-14 h-14 bg-cyan-500 rounded-2xl flex items-center justify-center mb-6 shadow-2xl relative z-10"><Cpu className="w-7 h-7 text-black" /></div>
-            <h2 className="text-4xl font-black mb-4 uppercase tracking-tighter relative z-10">Enter Void</h2>
-            <div className="space-y-4 relative z-10">
-              <input type="email" placeholder="Neural identifier" className="w-full px-6 py-4 rounded-xl bg-white/5 border border-white/10 focus:border-cyan-500 outline-none transition-all font-light text-lg" />
-              <button className="w-full py-4 rounded-xl bg-cyan-500 text-black font-black uppercase tracking-widest hover:bg-cyan-400 transition-all flex items-center justify-center gap-4 text-base">Join <Send className="w-4 h-4" /></button>
+            <button onClick={() => setShowWaitlist(false)} className="absolute top-6 right-6 p-2 glass rounded-full hover:bg-white/10 transition-all hover:scale-110 active:scale-90 z-20">
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="w-14 h-14 bg-cyan-500 rounded-2xl flex items-center justify-center mb-6 shadow-2xl relative z-10">
+              <Cpu className="w-7 h-7 text-black" />
             </div>
+            
+            <h2 className="text-4xl font-black mb-2 uppercase tracking-tighter relative z-10">Enter Void</h2>
+            <p className="text-white/40 text-sm mb-8 relative z-10">Join the neural network. Secure your access.</p>
+            
+            {submitStatus === 'success' ? (
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-cyan-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <ShieldCheck className="w-8 h-8 text-cyan-400" />
+                </div>
+                <h3 className="text-2xl font-black mb-2 text-cyan-400">LINK ESTABLISHED</h3>
+                <p className="text-white/60 text-sm">You're in the system. Check your neural identifier.</p>
+              </div>
+            ) : (
+              <form onSubmit={handleFormSubmit} className="space-y-4 relative z-10">
+                <div>
+                  <label htmlFor="name" className="block text-[9px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">
+                    Neural Identity
+                  </label>
+                  <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleFormChange}
+                    required
+                    placeholder="Enter your name"
+                    className="w-full px-6 py-4 rounded-xl bg-white/5 border border-white/10 focus:border-cyan-500 outline-none transition-all font-light text-lg placeholder:text-white/20"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="phone" className="block text-[9px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">
+                    Signal Channel
+                  </label>
+                  <input
+                    type="tel"
+                    id="phone"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleFormChange}
+                    required
+                    placeholder="Enter your phone number"
+                    className="w-full px-6 py-4 rounded-xl bg-white/5 border border-white/10 focus:border-cyan-500 outline-none transition-all font-light text-lg placeholder:text-white/20"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="email" className="block text-[9px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">
+                    Neural Identifier
+                  </label>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleFormChange}
+                    required
+                    placeholder="Enter your email address"
+                    className="w-full px-6 py-4 rounded-xl bg-white/5 border border-white/10 focus:border-cyan-500 outline-none transition-all font-light text-lg placeholder:text-white/20"
+                  />
+                </div>
+
+                {submitStatus === 'error' && (
+                  <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-center">
+                    <p className="text-red-400 text-sm font-bold">CONNECTION FAILED. TRY AGAIN.</p>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full py-4 rounded-xl bg-cyan-500 text-black font-black uppercase tracking-widest hover:bg-cyan-400 transition-all flex items-center justify-center gap-4 text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? 'ESTABLISHING LINK...' : 'JOIN'}
+                  {!isSubmitting && <Send className="w-4 h-4" />}
+                </button>
+              </form>
+            )}
           </div>
         </div>
       )}
@@ -462,7 +582,6 @@ const VisionaryApp: React.FC = () => {
           </div>
         </header>
 
-        {/* CURSOR */}
         {isVisionEnabled && !showWaitlist && (isPinching || isClicking) && (
           <div className="fixed z-[1500] pointer-events-none transition-transform duration-75 ease-out" style={{ left: cursorPos.x, top: cursorPos.y, transform: 'translate(-50%, -50%)' }}>
             <div className="relative">
@@ -473,7 +592,6 @@ const VisionaryApp: React.FC = () => {
           </div>
         )}
 
-        {/* HUD & STATUS */}
         <div className="fixed bottom-12 right-12 z-50 flex flex-col gap-4 items-end pointer-events-none">
           {isVisionEnabled && !showWaitlist && (
             <div className={`relative w-48 h-36 rounded-[28px] overflow-hidden glass shadow-2xl border-2 transition-all duration-700 ${isPinching ? 'border-cyan-500 scale-105' : 'border-white/10'}`}>
@@ -593,7 +711,7 @@ const VisionaryApp: React.FC = () => {
             <h2 className="text-8xl md:text-[14rem] font-black mb-4 opacity-5 tracking-tighter">VISIONARY.AI</h2>
             <div className="w-32 h-1 bg-gradient-to-r from-cyan-500 via-white to-magenta-500 mb-12 rounded-full" />
             <button onClick={() => setShowWaitlist(true)} className="group relative px-16 py-8 glass rounded-[36px] overflow-hidden border-white/10 transition-all hover:scale-105 active:scale-95 shadow-2xl border-2 hover:border-cyan-500/50">
-              <span className="text-3xl font-black uppercase tracking-widest relative z-10 text-glow">Forge Link</span>
+              <span className="text-3xl font-black uppercase tracking-widest relative z-10 text-glow">Waitlist Form</span>
             </button>
           </footer>
         </main>
